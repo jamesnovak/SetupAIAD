@@ -1,5 +1,6 @@
 # SetupAIAD
 PowerShell scripts that will automate setting up one or more CDS users and Power Apps environments
+This script is based on those provided with the Microsoft App In A Day trainer package.  Adjustments have been made for parameterizing your credentials and capturing error conditions.
 
 ## PARAMETERS
 
