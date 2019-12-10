@@ -52,8 +52,8 @@
     [Parameter(Mandatory = $true, ParameterSetName="Credentials", HelpMessage="Enter the region code in which the target tenant is deployed.")]
     [string]$TenantRegion="US",
 
-    [Parameter(Mandatory=$true, HelpMessage="Enter the default password for the new users that will be created in the target tenant.")]
-    [string]$NewUserPassword,
+    [Parameter(Mandatory=$false, HelpMessage="Enter the default password for the new users that will be created in the target tenant.")]
+    [string]$NewUserPassword = 'pass@word1',
 
     [Parameter(Mandatory=$false, HelpMessage="Enter the number new users that will be created in the target tenant.")]
     [int]$UserCount = 20,
