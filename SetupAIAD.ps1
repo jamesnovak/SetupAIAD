@@ -348,6 +348,8 @@ function Delete-CDSenvironment
     $envlist=Get-AdminPowerAppEnvironment | where {$_.EnvironmentType  -ne 'Default'}
 
     ForEach ($environemnt in $envlist) { 
+        Write-Host "Delete CDS Environment :" $environemnt.EnvironmentName -ForegroundColor Green
+
         Remove-AdminPowerAppEnvironment -EnvironmentName $environemnt.EnvironmentName
     }
 }
@@ -360,8 +362,7 @@ function Delete-CDSUsers{
     #remove users
     Get-MsolUser | where {$_.UserPrincipalName -like 'user*'}|Remove-MsolUser -Force
 
-    Write-Host "
-    *****************Lab Users Deleted ***************" -ForegroundColor Green
+    Write-Host "*****************Lab Users Deleted ***************" -ForegroundColor Green
     Get-MsolUser |fl displayname,licenses
 }
 
@@ -401,10 +402,13 @@ Get-AdminPowerAppEnvironment | Sort-Object displayname  | fl displayname
 Delete-CDSenvironment
 
 Delete-CDSUsers
-
-Create-CDSUsers -Tenant $TargetTenant -Count $UserCount -Region $TenantRegion -password $NewUserPassword
-
-Write-Host "Start creating the Environments in a few seconds" -ForegroundColor Yellow
 Start-Sleep -s 10
 
-Setup-CDSenvironments -CDSlocation unitedstates -AddTrial $true -AddProd $false
+if ($UserCount -gt 0) 
+{
+    Create-CDSUsers -Tenant $TargetTenant -Count $UserCount -Region $TenantRegion -password $NewUserPassword
+    Write-Host "Start creating the Environments in a few seconds" -ForegroundColor Yellow
+    Start-Sleep -s 10
+
+    Setup-CDSenvironments -CDSlocation unitedstates -AddTrial $true -AddProd $false
+}
