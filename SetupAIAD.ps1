@@ -84,16 +84,11 @@ $global:lastErrorCode = $null
 
 #Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
-Import-Module Microsoft.PowerShell.Utility
-
-#import Powerapps cmdlet
-cd .\PowerAppsCmdlets-V5
-dir . | Unblock-File
-Import-Module .\Microsoft.PowerApps.Administration.PowerShell.psm1 -Force
-Import-Module .\Microsoft.PowerApps.PowerShell.psm1 -Force
-cd ..
-
-Install-Module MSOnline
+# ***************** ***************** 
+# Import required modules
+# ***************** ***************** 
+$UpdateModule = $true
+. $PSScriptRoot\Module-Imports.ps1
 
 # ***************** ***************** 
 # Create-CDSUsers
@@ -126,11 +121,9 @@ function Create-CDSUsers
     $firstnames = @("Bryant","Walter","Emilio","Alejandro","Jenny","Thelma","Leo","Lori","Rudolph","Ann","Veronica","Darnell","Kathy","Jenna","Heather","Allison","Mary","Terence","Harvey","Frances","Kelly","Grace","Darryl","Michelle","Jorge")
     $lastnames =  @("Malone","Reeves","Rice","Guerrero","Elliott","Rogers","Porter","Castillo","Chambers","Stevenson","Wood","Bowman","Burke","Boyd","Roberson","Kelley","Hopkins","Watkins","Day","Castro","Foster","Nguyen","Fernandez","Owen","Manning")
  
-       Write-Host "creating users " -ForegroundColor Green
+    Write-Host "Begin creating users " -ForegroundColor Green
    
-       for ($i=1;$i -lt $Count+1; $i++) {
-       
-
+    for ($i=1;$i -lt $Count+1; $i++) {
         $randf = Get-Random -Maximum ($firstnames.length - 1)
         $randl = Get-Random -Maximum ($lastnames.length - 1)
 
@@ -144,7 +137,7 @@ function Create-CDSUsers
          #Set-MsolUserLicense -UserPrincipalName $email -AddLicenses (Get-MsolAccountSku).AccountSkuId -Verbose
          
         }
-        Write-Host "*****************Lab Users Created ***************" -ForegroundColor Green
+        Write-Host "***************** Lab Users Created ***************" -ForegroundColor Green
         Get-MsolUser | where {$_.UserPrincipalName -like 'user*'}|fl displayname,licenses
 }
 
@@ -197,7 +190,7 @@ function Create-CDSenvironment {
         }
 
         # check to see if an error occurred in the overall user loop
-        if ($lastErrorCode -ne $null){
+        if ($lastErrorCode -ne $null) {
             break
         }
     }
@@ -228,7 +221,7 @@ function new-Environment {
 
         Write-Host "New environment for user: " $Displayname ", Location: " $CDSlocation ", Sku:" $sku ", Attempt number " $global:incre
             
-        $currEnv = New-AdminPowerAppEnvironment -DisplayName  $Displayname -LocationName $CDSlocation -EnvironmentSku $sku -Verbose -ErrorVariable errorVal
+        $currEnv = New-AdminPowerAppEnvironment -DisplayName  $Displayname -LocationName $CDSlocation -EnvironmentSku $sku -ErrorVariable errorVal # -Verbose 
 
         # check whether to retry or to break
         if ($currEnv.EnvironmentName -eq $null) 
@@ -248,7 +241,7 @@ function new-Environment {
         }
     }
 
-    Write-Host " Created CDS Environment with id :" $currEnv.EnvironmentName -ForegroundColor Green
+    # Write-Host "New Environment with id:" $currEnv.EnvironmentName ", Display Name" $currEnv.DisplayName -ForegroundColor Green
 }
 
 # ***************** ***************** 
@@ -263,20 +256,17 @@ function create-CDSDatabases {
 
     ForEach ($CDSenv in $CDSenvs) 
     {
-        $CDSenv.EnvironmentName
-
         $global:incre = 1
 
-        Write-Host "Creating CDS databases for:" $CDSenv.DisplayName " id:" $CDSenv.EnvironmentName ", Attempt number: " $global:incre -ForegroundColor White
-        
+        Write-Host "Creating CDS databases for environment '"$CDSenv.DisplayName"' with id '"$CDSenv.EnvironmentName"', Attempt number: " $global:incre -ForegroundColor White
+
         # check whether to retry or to break
         while ($CDSenv.CommonDataServiceDatabaseType -eq "none")
         {
             $errorVal = $null
 
-            $CDSenv.CommonDataServiceDatabaseType
-
-            New-AdminPowerAppCdsDatabase -EnvironmentName $CDSenv.EnvironmentName -CurrencyName USD -LanguageName 1033 -Verbose -ErrorVariable errorVal -ErrorAction Continue
+            # Write-Host "Current CDS DBType: " $CDSenv.CommonDataServiceDatabaseType
+            New-AdminPowerAppCdsDatabase -EnvironmentName $CDSenv.EnvironmentName -CurrencyName USD -LanguageName 1033 -ErrorVariable errorVal -ErrorAction Continue #-Verbose 
 
             $CDSenv=Get-AdminPowerAppEnvironment -EnvironmentName $CDSenv.EnvironmentName
             
@@ -295,6 +285,7 @@ function create-CDSDatabases {
                     Start-Sleep -s $SleepTime
                 }
             }
+            Write-Host "New '"$CDSenv.CommonDataServiceDatabaseType"' created for" $CDSenv.DisplayName -ForegroundColor White
         }
 
         # check to see if an error occurred in the overall user loop
@@ -305,7 +296,7 @@ function create-CDSDatabases {
 
     $endtime = Get-Date -DisplayHint Time
     $duration = $("{0:hh\:mm\:ss}" -f ($endtime-$starttime))
-    Write-Host "End of CreateCDSDatabases at : " $endtime " Duration: " $duration -ForegroundColor Green
+    Write-Host "End of CreateCDSDatabases at :" $endtime ", Duration: " $duration -ForegroundColor Green
 }
 
 # ***************** ***************** 
@@ -326,13 +317,12 @@ function Setup-CDSenvironments
 
     Add-PowerAppsAccount -Username $UserCredential.UserName -Password $UserCredential.Password -Verbose
 
-    Get-AdminPowerAppEnvironment | Sort-Object displayname  | fl displayname
-
     Write-Host "Start creating the CDS Databases in a few seconds" -ForegroundColor Yellow
     Start-Sleep -s 15
 
     create-CDSDatabases
 
+    Write-Host "Current list of CDS Environments:"
     Get-AdminPowerAppEnvironment | Sort-Object displayname  | fl displayname
 }
 
@@ -347,10 +337,9 @@ function Delete-CDSenvironment
     #delete all environemnts
     $envlist=Get-AdminPowerAppEnvironment | where {$_.EnvironmentType  -ne 'Default'}
 
-    ForEach ($environemnt in $envlist) { 
-        Write-Host "Delete CDS Environment :" $environemnt.EnvironmentName -ForegroundColor Green
-
-        Remove-AdminPowerAppEnvironment -EnvironmentName $environemnt.EnvironmentName
+    ForEach ($env in $envlist) { 
+        Write-Host "Delete CDS Environment :" $env.EnvironmentName -ForegroundColor Green
+        Remove-AdminPowerAppEnvironment -EnvironmentName $env.EnvironmentName
     }
 }
 
@@ -359,11 +348,8 @@ function Delete-CDSenvironment
 # ***************** ***************** 
 function Delete-CDSUsers{
 
-    #remove users
     Get-MsolUser | where {$_.UserPrincipalName -like 'user*'}|Remove-MsolUser -Force
-
     Write-Host "*****************Lab Users Deleted ***************" -ForegroundColor Green
-    Get-MsolUser |fl displayname,licenses
 }
 
 # ***************** ***************** 
@@ -394,11 +380,12 @@ if(((Get-MsolUser -UserPrincipalName $UserCredential.UserName | select licenses)
 
 #connect to powerapps
 Add-PowerAppsAccount -Username $UserCredential.UserName -Password $UserCredential.Password -Verbose
-Write-Host "**********Existing CDS environment**************"
+
+Write-Host "********** Existing CDS environments **************"
 Get-AdminPowerAppEnvironment | Sort-Object displayname  | fl displayname
  
 #Delete-Users and environments
-# BE AWARE THAT THIS WILL DELETE ALL ENVIRONMENTS
+# BE AWARE THAT THIS WILL DELETE ALL ENVIRONMENTS EXCEPT DEFAULT
 Delete-CDSenvironment
 
 Delete-CDSUsers

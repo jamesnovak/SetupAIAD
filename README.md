@@ -31,7 +31,8 @@ The region in which the target tenant is deployed
 The default password for the new users that will be created in the target tenant. Default: `'pass@word1'`
 
 * `UserCount`
-The number new users that will be created in the target tenant. Default: `20`
+The number new users that will be created in the target tenant. Default: `20`  
+If you would simply like to clear out all users and environments, enter `0`
 
 * `MaxRetryCount`
 The number of retries when an error occurs. Default: `3`
