@@ -17,7 +17,21 @@
 
     .PARAMETER TenantRegion
     The region in which the target tenant is deployed
-    
+
+    .PARAMETER CDSLocation
+    The location in which the target CDS environment is deployed.  Available CDSLocation values
+        * `unitedstates`             (United States)
+        * `europe`                   (Europe)
+        * `asia`                     (Asia)
+        * `australia`                (Australia)
+        * `india`                    (India)
+        * `japan`                    (Japan)
+        * `canada`                   (Canada)
+        * `unitedkingdom`            (United Kingdom)
+        * `unitedstatesfirstrelease` (Preview (United States))
+        * `southamerica`             (South America)
+        * `france`                   (France)
+
     .PARAMETER NewUserPassword
     The default password for the new users that will be created in the target tenant
 
@@ -30,6 +44,9 @@
     .PARAMETER SleepTime
     The time to sleep between retries when an error occurs. Default: 5
 
+    .PARAMETER ForceUpdateModule
+    Flag indicating whether to force an update of the required PS modules.  Default: false
+
     .INPUTS
     None. You cannot pipe objects to SetupAIAD.ps1.
 
@@ -37,7 +54,7 @@
     None. SetupAIAD.ps1 does not generate any output.
 
     .EXAMPLE
-    C:\PS> .\SetupAIAD.ps1 -TargetTenant 'demotenant' -UserName 'admin' -Password 'password' -TenantRegion 'US' -NewUserPassword 'password' -UserCount 20 -MaxRetryCount 3 -SleepTime 5 
+    C:\PS> .\SetupAIAD.ps1 -TargetTenant 'demotenant' -UserName 'admin' -Password 'password' -TenantRegion 'US' -CDSLocation unitedstates -NewUserPassword 'password' -UserCount 20 -MaxRetryCount 3 -SleepTime 5 
 #>
  param (
     [Parameter(Mandatory=$true, ParameterSetName="Credentials", HelpMessage="Enter the name of the target tenant. Ex: 'contoso' for admin@contoso.onmicrosoft.com.") ] 
@@ -52,6 +69,9 @@
     [Parameter(Mandatory = $true, ParameterSetName="Credentials", HelpMessage="Enter the region code in which the target tenant is deployed.")]
     [string]$TenantRegion="US",
 
+    [Parameter(Mandatory = $true, ParameterSetName="Credentials", HelpMessage="Enter the location name in which the target CDS environment is deployed.")]
+    [string]$CDSLocation="unitedstates",
+
     [Parameter(Mandatory=$false, HelpMessage="Enter the default password for the new users that will be created in the target tenant.")]
     [string]$NewUserPassword = 'pass@word1',
 
@@ -62,7 +82,10 @@
     [int]$MaxRetryCount = 3,
 
     [Parameter(Mandatory=$false, HelpMessage="Enter the time to sleep between retries when an error occurs.")]
-    [int]$SleepTime = 5
+    [int]$SleepTime = 5,
+
+    [Parameter(Mandatory=$false, HelpMessage="Flag indicating whether to force an update of the required PS modules.")]
+    [bool]$ForceUpdateModule = $false
  )
 
 # ***************** ***************** 
@@ -79,6 +102,8 @@ Write-Host "SleepTime: " $SleepTime
 Write-Host "MaxRetryCount: " $MaxRetryCount
 Write-Host "UserCount: " $UserCount
 Write-Host "Tenant: " $Tenant
+Write-Host "CDSLocation: " $CDSLocation
+Write-Host "ForceUpdateModule: " $ForceUpdateModule
 
 $global:lastErrorCode = $null
 
@@ -87,7 +112,7 @@ $global:lastErrorCode = $null
 # ***************** ***************** 
 # Import required modules
 # ***************** ***************** 
-$UpdateModule = $true
+$UpdateModule = $ForceUpdateModule
 . $PSScriptRoot\Module-Imports.ps1
 
 # ***************** ***************** 
@@ -114,7 +139,7 @@ function Create-CDSUsers
     Write-Host "Count: " $Count
     Write-Host "Licence Plans: " (Get-MsolAccountSku).AccountSkuId
     Write-Host "Region: " $Region
-    Write-Host "CDSlocation: " $CDSlocation
+    Write-Host "Location: " $CDSlocation
     Write-Host "password: " $password
   
     $securepassword = ConvertTo-SecureString -String $password -AsPlainText -Force
@@ -150,7 +175,7 @@ function Create-CDSenvironment {
     [Parameter(Mandatory = $false)]
     [string]$password=$NewUserPassword,
     [Parameter(Mandatory = $false)]
-    [string]$CDSlocation="europe",
+    [string]$Location="unitedstates",
     [Parameter(Mandatory = $false)]
     [bool]$AddTrial=$true,
     [Parameter(Mandatory = $false)]
@@ -178,7 +203,7 @@ function Create-CDSenvironment {
             $envDisplayname = $user.UserPrincipalName.Split('@')[0] + "-Dev"
 
             # call the helper function for the environment 
-            new-Environment -Displayname $envDisplayname -sku Trial -CDSlocation $CDSlocation
+            new-Environment -Displayname $envDisplayname -sku Trial -Location $Location
         }
 
         if ($AddProd -eq $true)
@@ -186,7 +211,7 @@ function Create-CDSenvironment {
             $envDisplayname = $user.UserPrincipalName.Split('@')[0] + "-Prod"
 
             # call the helper function for the environment 
-            new-Environment -Displayname $envDisplayname -sku Production -CDSlocation $CDSlocation
+            new-Environment -Displayname $envDisplayname -sku Production -Location $Location
         }
 
         # check to see if an error occurred in the overall user loop
@@ -209,7 +234,7 @@ function new-Environment {
     [Parameter(Mandatory = $true)]
     [string]$sku='Trial',
     [Parameter(Mandatory = $true)]
-    [string]$CDSlocation=$null
+    [string]$Location=$null
     )
 
     $global:incre = 1
@@ -219,9 +244,9 @@ function new-Environment {
     {
         $errorVal = $null
 
-        Write-Host "New environment for user: " $Displayname ", Location: " $CDSlocation ", Sku:" $sku ", Attempt number " $global:incre
+        Write-Host "New environment for user: " $Displayname ", Location: " $Location ", Sku:" $sku ", Attempt number " $global:incre
             
-        $currEnv = New-AdminPowerAppEnvironment -DisplayName  $Displayname -LocationName $CDSlocation -EnvironmentSku $sku -ErrorVariable errorVal # -Verbose 
+        $currEnv = New-AdminPowerAppEnvironment -DisplayName  $Displayname -LocationName $Location -EnvironmentSku $sku -ErrorVariable errorVal # -Verbose 
 
         # check whether to retry or to break
         if ($currEnv.EnvironmentName -eq $null) 
@@ -306,14 +331,14 @@ function Setup-CDSenvironments
 {
     param(
     [Parameter(Mandatory = $false)]
-    [string]$CDSlocation="europe",
+    [string]$Location="unitedstates",
     [Parameter(Mandatory = $false)]
     [bool]$AddTrial=$true,
     [Parameter(Mandatory = $false)]
     [bool]$AddProd=$false
     )
 
-    create-CDSenvironment -CDSlocation $CDSlocation -AddTrial $AddTrial -AddProd $AddProd
+    create-CDSenvironment -Location $Location -AddTrial $AddTrial -AddProd $AddProd
 
     Add-PowerAppsAccount -Username $UserCredential.UserName -Password $UserCredential.Password -Verbose
 
@@ -368,6 +393,10 @@ $UserCredential = New-Object -TypeName System.Management.Automation.PSCredential
 # ***************** ***************** 
 Connect-MsolService -Credential $UserCredential
 
+# Get-AdminPowerAppEnvironmentLocations 
+
+Exit-PSSession 
+
 # ***************** ***************** 
 # Check if you have POWERFLOW_P2  License 
 # ***************** ***************** 
@@ -383,7 +412,7 @@ Add-PowerAppsAccount -Username $UserCredential.UserName -Password $UserCredentia
 
 Write-Host "********** Existing CDS environments **************"
 Get-AdminPowerAppEnvironment | Sort-Object displayname  | fl displayname
- 
+
 #Delete-Users and environments
 # BE AWARE THAT THIS WILL DELETE ALL ENVIRONMENTS EXCEPT DEFAULT
 Delete-CDSenvironment
@@ -397,5 +426,5 @@ if ($UserCount -gt 0)
     Write-Host "Start creating the Environments in a few seconds" -ForegroundColor Yellow
     Start-Sleep -s 10
 
-    Setup-CDSenvironments -CDSlocation unitedstates -AddTrial $true -AddProd $false
+    Setup-CDSenvironments -Location $CDSLocation -AddTrial $true -AddProd $false
 }

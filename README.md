@@ -27,6 +27,21 @@ The password for the user with appropriate permission in the target tenant
 * `TenantRegion`
 The region in which the target tenant is deployed
 
+* `CDSLocation`
+The location in which the target CDS environment is deployed. Default: `unitedstates`
+Available CDSLocation values
+    * `unitedstates`             (United States)
+    * `europe`                   (Europe)
+    * `asia`                     (Asia)
+    * `australia`                (Australia)
+    * `india`                    (India)
+    * `japan`                    (Japan)
+    * `canada`                   (Canada)
+    * `unitedkingdom`            (United Kingdom)
+    * `unitedstatesfirstrelease` (Preview (United States))
+    * `southamerica`             (South America)
+    * `france`                   (France)
+
 * `NewUserPassword`
 The default password for the new users that will be created in the target tenant. Default: `'pass@word1'`
 
@@ -40,5 +55,8 @@ The number of retries when an error occurs. Default: `3`
 * `SleepTime`
 The time to sleep between retries when an error occurs. Default: `5`
 
+* `ForceUpdateModule`
+Flag indicating whether to force an update of the required PS modules.  Default: `false`
+
 ## EXAMPLE USAGE
-`C:\PS> .\SetupAIAD.ps1 -TargetTenant 'demotenant' -UserName 'admin' -Password 'password' -TenantRegion 'US' -NewUserPassword 'password' -UserCount 20 -MaxRetryCount 3 -SleepTime 5` 
+`C:\PS> .\SetupAIAD.ps1 -TargetTenant 'demotenant' -UserName 'admin' -Password 'password' -TenantRegion 'US' -CDSLocation unitedstates -NewUserPassword 'password' -UserCount 20 -MaxRetryCount 3 -SleepTime 5` 
